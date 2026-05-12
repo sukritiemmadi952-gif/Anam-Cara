@@ -1,0 +1,95 @@
+{
+  "theme": "Light",
+  "archetype": "3 (Pastel & Soft) - Modified for 'Gentle Comfort'",
+  "emotional_feel": "Calm, warm, emotionally safe, non-judgmental, private, gentle, minimalistic but comforting. Never overwhelming.",
+  "typography": {
+    "heading_font": "Nunito",
+    "body_font": "DM Sans",
+    "strategy": "Soft Utility: Rounded Humanist Sans for approachability paired with a highly legible Clean Sans for body. Typeset headings with slightly tight tracking to maintain maturity and avoid feeling overly childish.",
+    "scales": {
+      "h1": "text-4xl sm:text-5xl lg:text-5xl tracking-tight leading-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight",
+      "h3": "text-xl sm:text-2xl",
+      "h4": "text-lg sm:text-xl",
+      "body": "text-base leading-relaxed text-slate-700",
+      "small": "text-sm text-slate-500",
+      "overline": "text-xs uppercase tracking-[0.2em] text-slate-500"
+    }
+  },
+  "colors": {
+    "background": {
+      "main": "#FDFBF7",
+      "surface": "#FFFFFF",
+      "glass": "bg-white/70 backdrop-blur-xl"
+    },
+    "text": {
+      "primary": "#1E293B",
+      "secondary": "#64748B",
+      "muted": "#94A3B8"
+    },
+    "border": "#E2E8F0",
+    "modes_palette": {
+      "confusion": { "bg": "bg-slate-50", "text": "text-slate-800", "border": "border-slate-100", "hex": "#F8FAFC" },
+      "anxiety": { "bg": "bg-teal-50", "text": "text-teal-800", "border": "border-teal-100", "hex": "#F0FDFA" },
+      "burnout": { "bg": "bg-orange-50", "text": "text-orange-800", "border": "border-orange-100", "hex": "#FFF7ED" },
+      "overthinking": { "bg": "bg-indigo-50", "text": "text-indigo-800", "border": "border-indigo-100", "hex": "#EEF2FF" },
+      "loneliness": { "bg": "bg-sky-50", "text": "text-sky-800", "border": "border-sky-100", "hex": "#F0F9FF" },
+      "pressure": { "bg": "bg-rose-50", "text": "text-rose-800", "border": "border-rose-100", "hex": "#FFF1F2" },
+      "exhaustion": { "bg": "bg-zinc-50", "text": "text-zinc-800", "border": "border-zinc-100", "hex": "#FAFAFA" },
+      "disconnected": { "bg": "bg-amber-50", "text": "text-amber-800", "border": "border-amber-100", "hex": "#FFFBEB" },
+      "happiness": { "bg": "bg-pink-50", "text": "text-pink-800", "border": "border-pink-100", "hex": "#FDF2F8" }
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous Spacing Philosophy. Lots of negative space to give emotional 'breathing room'.",
+    "containers": "Use rounded-3xl for main cards and rounded-full for buttons. Never use sharp edges.",
+    "grid_strategy": "Mode A (Tetris Grid) for Landing Page hero sections to create visual interest. Mode B (Control Room Grid) but loosely spaced for the 9 Emotional Mode cards.",
+    "paddings": "p-8 or p-12 for inner card contents. p-4 to p-6 for smaller interactive items."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-slate-800 text-white rounded-full px-8 py-3 hover:bg-slate-700 hover:-translate-y-0.5 transition-all duration-300 shadow-sm",
+      "secondary": "bg-white text-slate-700 border border-slate-200 rounded-full px-8 py-3 hover:bg-slate-50 transition-all duration-300",
+      "mode_card": "flex flex-col items-start p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] cursor-pointer"
+    },
+    "navigation": "Crystal Glass variant. bg-white/70 backdrop-blur-xl border-b border-slate-100/50. Keeps the header present but unobtrusive.",
+    "cards": "Neumorphism Tactile variant but softer. bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] p-8.",
+    "forms": "Use highly customized Shadcn inputs. rounded-2xl border-slate-200 focus:ring-2 focus:ring-slate-100 focus:border-slate-300. No harsh outlines."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Soft lifts (-translate-y-1) and slight shadow expansion. No rapid color flashes.",
+    "page_transitions": "Slow dissolve or fade-in (opacity 0 to 1 over 500ms).",
+    "lists": "Staggered entrance animations for quiz questions or reflection wall items."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Use stroke-width 1.5 for a delicate, gentle feel. Avoid heavy or filled icons unless for active states."
+  },
+  "media": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1759240837736-29a76e7e5076?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwyfHxzb2Z0JTIwY2xvdWRzJTIwcGFzdGVsJTIwZ3JhZGllbnR8ZW58MHx8fHwxNzc4NTY0NzczfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Soft pink and blue pastel cloud gradient. Use as a blurred or low-opacity hero background to establish calm."
+    },
+    "reflection_intro": {
+      "url": "https://images.unsplash.com/photo-1768225802068-a621154bab78?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwcGVhY2VmdWwlMjBuYXR1cmUlMjBkYXdufGVufDB8fHx8MTc3ODU2NDc3Mnww&ixlib=rb-4.1.0&q=85",
+      "description": "Tall grass emerging from foggy water. Use on the reflection submission or quiz start page as a grounding visual."
+    },
+    "community_wall_bg": {
+      "url": "https://images.unsplash.com/photo-1683593960988-db40ce5aa573?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHw0fHxnZW50bGUlMjBibHVycmVkJTIwbGlnaHRzJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3Nzg1NjQ3NzN8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Gentle blurred lights. Use faintly in the background of the Community Wall to suggest other 'presences' in a safe space."
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure text inside pastel mode cards uses the -800 weight of the respective color to pass APCA/WCAG contrast against the -50 weight background.",
+    "testing": "All interactive elements MUST include data-testid attribute in kebab-case (e.g., data-testid='mode-select-anxiety').",
+    "motion": "Respect prefers-reduced-motion for all fade and lift animations."
+  },
+  "instructions_to_main_agent": [
+    "Build the 9 emotional mode cards on the landing page using the 'modes_palette' colors. Each card should feel like a soft, safe entry point.",
+    "The quiz interface should present one question at a time or in a very spacious list to avoid overwhelming the user.",
+    "Post-quiz reflection page MUST include echo notes (validating user input gently), small coping suggestions, and an anonymous story.",
+    "Always display the persistent mental health disclaimer prominently but gently in the footer and on the quiz start screens.",
+    "Avoid standard Vercel/Stripe stark aesthetics; lean fully into the Pastel & Soft archetype with generous padding (p-8/p-12) and rounded-3xl corners.",
+    "Apply the designated media URLs directly into img tags or background-image styles; DO NOT use placeholders."
+  ]
+}
