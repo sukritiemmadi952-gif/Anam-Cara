@@ -309,7 +309,24 @@ async def admin_delete_reflection(rid: str, admin: dict = Depends(get_current_ad
         raise HTTPException(status_code=404, detail="Reflection not found.")
     return {"ok": True}
 
+@api_router.get("/admin/quiz-submissions")
+async def admin_list_quiz_submissions(admin: dict = Depends(get_current_admin)):
+    _db = require_db()
+    items = await _db.quiz_submissions.find(
+        {}, {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    return items
 
+
+@api_router.delete("/admin/quiz-submissions/{sid}")
+async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_current_admin)):
+    _db = require_db()
+    res = await _db.quiz_submissions.delete_one({"id": sid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+    return {"ok": True}
+
+    
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_current_admin)):
     _db = require_db()
