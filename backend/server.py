@@ -349,8 +349,13 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=False,
-    allow_origins=["*"],
+    allow_credentials=True,
+    allow_origins=[
+        "https://anam-cara-voj3.vercel.app",           # your stable backend/frontend URL
+        "https://anam-cara.vercel.app",                 # if you have a custom alias
+        # allow all Vercel preview URLs for your project:
+    ],
+    allow_origin_regex=r"https://anam-cara-.*\.vercel\.app",  # ✅ covers all preview deploys
     allow_methods=["*"],
     allow_headers=["*"],
 )
