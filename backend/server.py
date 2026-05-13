@@ -23,9 +23,13 @@ from content import MODES, QUIZZES, REFLECTIONS, CURATED_STORIES
 
 
 # --- Setup ---
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+mongo_url = os.environ.get("MONGO_URL")
+db_name = os.environ.get("DB_NAME")
+client = None
+db = None
+if mongo_url and db_name:
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[db_name]
 
 app = FastAPI(title="Anam Cara")
 api_router = APIRouter(prefix="/api")
@@ -68,6 +72,7 @@ def create_access_token(user_id: str, email: str) -> str:
 
 
 async def get_current_admin(request: Request) -> dict:
+    _db = require_db()
     token = request.cookies.get("access_token")
     if not token:
         auth = request.headers.get("Authorization", "")
@@ -79,7 +84,7 @@ async def get_current_admin(request: Request) -> dict:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "access":
             raise HTTPException(status_code=401, detail="Invalid token type")
-        user = await db.users.find_one({"id": payload["sub"], "role": "admin"}, {"_id": 0, "password_hash": 0})
+        user = await _db.users.find_one({"id": payload["sub"], "role": "admin"}, {"_id": 0, "password_hash": 0})
         if not user:
             raise HTTPException(status_code=401, detail="Admin not found")
         return user
@@ -145,8 +150,9 @@ async def root():
 # Auth
 @api_router.post("/auth/login")
 async def login(payload: LoginIn, response: Response):
+    _db = require_db()
     email = payload.email.lower().strip()
-    user = await db.users.find_one({"email": email})
+    user = await _db.users.find_one({"email": email})
     if not user or not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
     if user.get("role") != "admin":
@@ -194,6 +200,7 @@ async def get_quiz(slug: str):
 
 @api_router.post("/quiz/submit")
 async def submit_quiz(payload: QuizSubmitIn):
+    _db = require_db()
     if payload.mode not in REFLECTIONS:
         raise HTTPException(status_code=404, detail="Mode not found")
     reflection = REFLECTIONS[payload.mode]
@@ -201,7 +208,7 @@ async def submit_quiz(payload: QuizSubmitIn):
 
     # try pick anonymous related story from approved Reflection Wall first
     story = None
-    pool = await db.reflections.find(
+    pool = await _db.reflections.find(
         {"status": "approved", "mode": payload.mode},
         {"_id": 0, "body": 1},
     ).to_list(50)
@@ -219,7 +226,7 @@ async def submit_quiz(payload: QuizSubmitIn):
         "open_text": (payload.open_text or "")[:1000],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.quiz_submissions.insert_one(submission)
+    await _db.quiz_submissions.insert_one(submission)
 
     return {
         "mode": mode,
@@ -235,7 +242,8 @@ async def submit_quiz(payload: QuizSubmitIn):
 # Reflection Wall (public)
 @api_router.get("/wall")
 async def get_wall(limit: int = 30):
-    items = await db.reflections.find(
+    _db = require_db()
+    items = await _db.reflections.find(
         {"status": "approved"}, {"_id": 0, "password_hash": 0},
     ).sort("created_at", -1).to_list(min(limit, 100))
     return [reflection_doc_to_out(d) for d in items]
@@ -243,6 +251,7 @@ async def get_wall(limit: int = 30):
 
 @api_router.post("/wall", response_model=ReflectionOut)
 async def submit_reflection(payload: ReflectionSubmit):
+    _db = require_db()
     body = payload.body.strip()
     if not body:
         raise HTTPException(status_code=400, detail="Reflection cannot be empty.")
@@ -257,7 +266,7 @@ async def submit_reflection(payload: ReflectionSubmit):
         "flagged": flagged,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.reflections.insert_one(doc)
+    await _db.reflections.insert_one(doc)
     return reflection_doc_to_out(doc)
 
 
@@ -267,10 +276,11 @@ async def admin_list_reflections(
     status: Optional[str] = None,
     admin: dict = Depends(get_current_admin),
 ):
+    _db = require_db()
     query = {}
     if status in {"pending", "approved", "rejected"}:
         query["status"] = status
-    items = await db.reflections.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    items = await _db.reflections.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return [reflection_doc_to_out(d) for d in items]
 
 
@@ -280,19 +290,21 @@ async def admin_update_reflection(
     payload: dict,
     admin: dict = Depends(get_current_admin),
 ):
+    _db = require_db()
     new_status = payload.get("status")
     if new_status not in {"pending", "approved", "rejected"}:
         raise HTTPException(status_code=400, detail="Invalid status.")
-    res = await db.reflections.update_one({"id": rid}, {"$set": {"status": new_status}})
+    res = await _db.reflections.update_one({"id": rid}, {"$set": {"status": new_status}})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Reflection not found.")
-    doc = await db.reflections.find_one({"id": rid}, {"_id": 0})
+    doc = await _db.reflections.find_one({"id": rid}, {"_id": 0})
     return reflection_doc_to_out(doc)
 
 
 @api_router.delete("/admin/reflections/{rid}")
 async def admin_delete_reflection(rid: str, admin: dict = Depends(get_current_admin)):
-    res = await db.reflections.delete_one({"id": rid})
+    _db = require_db()
+    res = await _db.reflections.delete_one({"id": rid})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Reflection not found.")
     return {"ok": True}
@@ -300,11 +312,12 @@ async def admin_delete_reflection(rid: str, admin: dict = Depends(get_current_ad
 
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_current_admin)):
-    pending = await db.reflections.count_documents({"status": "pending"})
-    approved = await db.reflections.count_documents({"status": "approved"})
-    rejected = await db.reflections.count_documents({"status": "rejected"})
-    flagged = await db.reflections.count_documents({"flagged": True, "status": "pending"})
-    quizzes = await db.quiz_submissions.count_documents({})
+    _db = require_db()
+    pending = await _db.reflections.count_documents({"status": "pending"})
+    approved = await _db.reflections.count_documents({"status": "approved"})
+    rejected = await _db.reflections.count_documents({"status": "rejected"})
+    flagged = await _db.reflections.count_documents({"flagged": True, "status": "pending"})
+    quizzes = await _db.quiz_submissions.count_documents({})
     return {
         "pending": pending,
         "approved": approved,
@@ -329,14 +342,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
+def require_db():
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database is not configured.")
+    return db
+
+
 @app.on_event("startup")
 async def startup():
+    if db is None:
+        logger.warning("Database is not configured. DB-dependent routes will return 503.")
+        return
+    _db = db
     # Seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@anamcara.app").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD", "anamcara2026")
-    existing = await db.users.find_one({"email": admin_email})
+    existing = await _db.users.find_one({"email": admin_email})
     if existing is None:
-        await db.users.insert_one({
+        await _db.users.insert_one({
             "id": str(uuid.uuid4()),
             "email": admin_email,
             "password_hash": hash_password(admin_password),
@@ -346,17 +369,18 @@ async def startup():
         })
         logger.info("Seeded admin user.")
     elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one(
+        await _db.users.update_one(
             {"email": admin_email},
             {"$set": {"password_hash": hash_password(admin_password)}},
         )
         logger.info("Updated admin password.")
     # Indexes
-    await db.users.create_index("email", unique=True)
-    await db.reflections.create_index("created_at")
-    await db.reflections.create_index("status")
+    await _db.users.create_index("email", unique=True)
+    await _db.reflections.create_index("created_at")
+    await _db.reflections.create_index("status")
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None:
+        client.close()
