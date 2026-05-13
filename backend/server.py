@@ -310,22 +310,50 @@ async def admin_delete_reflection(rid: str, admin: dict = Depends(get_current_ad
     return {"ok": True}
 
 @api_router.get("/admin/quiz-submissions")
-async def admin_list_quiz_submissions(admin: dict = Depends(get_current_admin)):
+async def admin_list_quiz_submissions(
+    status: Optional[str] = None,
+    admin: dict = Depends(get_current_admin),
+):
     _db = require_db()
-    items = await _db.quiz_submissions.find(
-        {}, {"_id": 0}
-    ).sort("created_at", -1).to_list(500)
+    if status == "pending":
+        # pending should include legacy docs with no status
+        query = {"$or": [{"status": "pending"}, {"status": {"$exists": False}}]}
+    elif status in {"approved", "rejected"}:
+        query = {"status": status}
+    else:
+        query = {}  # all
+
+    items = await _db.quiz_submissions.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    for item in items:
+        if "status" not in item:
+            item["status"] = "pending"
     return items
 
 
-@api_router.delete("/admin/quiz-submissions/{sid}")
-async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_current_admin)):
+@api_router.patch("/admin/quiz-submissions/{sid}")
+async def admin_update_quiz_submission(
+    sid: str,
+    payload: dict,
+    admin: dict = Depends(get_current_admin),
+):
     _db = require_db()
-    res = await _db.quiz_submissions.delete_one({"id": sid})
-    if res.deleted_count == 0:
+    new_status = payload.get("status")
+    if new_status not in {"pending", "approved", "rejected"}:
+        raise HTTPException(status_code=400, detail="Invalid status.")
+    res = await _db.quiz_submissions.update_one({"id": sid}, {"$set": {"status": new_status}})
+    if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Submission not found.")
-    return {"ok": True}
+    doc = await _db.quiz_submissions.find_one({"id": sid}, {"_id": 0})
+    return doc
 
+
+# @api_router.delete("/admin/quiz-submissions/{sid}")
+# async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_current_admin)):
+#     _db = require_db()
+#     res = await _db.quiz_submissions.delete_one({"id": sid})
+#     if res.deleted_count == 0:
+#         raise HTTPException(status_code=404, detail="Submission not found.")
+#     return {"ok": True}
 
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_current_admin)):
@@ -342,6 +370,16 @@ async def admin_stats(admin: dict = Depends(get_current_admin)):
         "flagged_pending": flagged,
         "quizzes_completed": quizzes,
     }
+@api_router.delete("/admin/quiz-submissions/{sid}")
+async def admin_delete_quiz_submission(
+    sid: str,
+    admin: dict = Depends(get_current_admin),
+):
+    _db = require_db()
+    res = await _db.quiz_submissions.delete_one({"id": sid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+    return {"ok": True}
 
 
 # Include router
