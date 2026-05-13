@@ -353,11 +353,15 @@ async def startup():
     if db is None:
         logger.warning("Database is not configured. DB-dependent routes will return 503.")
         return
+
     _db = db
     try:
-        # Seed admin
+        # cheap connectivity check first
+        await _db.command("ping")
+
         admin_email = os.environ.get("ADMIN_EMAIL", "admin@anamcara.app").lower()
         admin_password = os.environ.get("ADMIN_PASSWORD", "anamcara2026")
+
         existing = await _db.users.find_one({"email": admin_email})
         if existing is None:
             await _db.users.insert_one({
@@ -368,21 +372,19 @@ async def startup():
                 "role": "admin",
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
-            logger.info("Seeded admin user.")
         elif not verify_password(admin_password, existing["password_hash"]):
             await _db.users.update_one(
                 {"email": admin_email},
                 {"$set": {"password_hash": hash_password(admin_password)}},
             )
-            logger.info("Updated admin password.")
 
-        # Indexes
         await _db.users.create_index("email", unique=True)
         await _db.reflections.create_index("created_at")
         await _db.reflections.create_index("status")
+
     except Exception as e:
-        # Keep app booting on serverless even if DB init fails.
         logger.exception("Startup DB initialization failed: %s", e)
+
 
 
 @app.on_event("shutdown")
