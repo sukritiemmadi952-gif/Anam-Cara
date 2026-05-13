@@ -1,23 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, RefreshCcw } from "lucide-react";
-import { api, MODE_PALETTE, formatError } from "../lib/api";
+import { api, MODE_PALETTE } from "../lib/api";
 import Disclaimer from "../components/Disclaimer";
 
 export default function Wall() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const load = async () => {
     setLoading(true);
-    setError("");
     try {
       const { data } = await api.get("/wall");
       setItems(data);
-    } catch (e) {
-      setError(formatError(e));
-      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -61,7 +56,6 @@ export default function Wall() {
       <div className="mt-6">
         <Disclaimer subtle testId="wall-disclaimer" />
       </div>
-      {error && <div className="mt-5 text-sm text-rose-600" data-testid="wall-error">{error}</div>}
 
       {loading ? (
         <div className="mt-12 text-slate-500" data-testid="wall-loading">Gathering quiet voices…</div>
