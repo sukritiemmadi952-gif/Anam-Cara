@@ -326,7 +326,7 @@ async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Submission not found.")
     return {"ok": True}
 
-    
+
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_current_admin)):
     _db = require_db()
@@ -349,8 +349,8 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_credentials=False,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
