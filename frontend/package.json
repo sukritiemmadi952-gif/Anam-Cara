@@ -60,6 +60,9 @@
     "build": "craco build",
     "test": "craco test"
   },
+  "engines": {
+  "node": "20.x"
+},
   "browserslist": {
     "production": [
       ">0.2%",
@@ -73,11 +76,10 @@
     ]
   },
   "overrides": {
-    "eslint": "8.57.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "ajv": "^8.0.0"
-  },
+  "eslint": "8.57.1",
+  "react": "18.3.1",
+  "react-dom": "18.3.1"
+},
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@craco/craco": "^7.1.0",
