@@ -35,9 +35,8 @@ app = FastAPI(title="Anam Cara")
 api_router = APIRouter(prefix="/api")
 
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_MINUTES = 60 * 12  # 12h for a small admin panel
+ACCESS_TOKEN_MINUTES = 60 * 12
 
-# Basic moderation filter (very gentle catch-net; admin makes the real call)
 BANNED_PATTERNS = [
     r"\bkys\b", r"\bkill\s*yourself\b", r"\bsuicid\w*\b", r"\bself.harm\b",
     r"\bn[i1]gg\w*", r"\bf[a@]gg\w*", r"\bretard\w*", r"\bbitch\w*",
@@ -71,6 +70,12 @@ def create_access_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
 
+def require_db():
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database is not configured.")
+    return db
+
+
 async def get_current_admin(request: Request) -> dict:
     _db = require_db()
     token = request.cookies.get("access_token")
@@ -84,7 +89,10 @@ async def get_current_admin(request: Request) -> dict:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "access":
             raise HTTPException(status_code=401, detail="Invalid token type")
-        user = await _db.users.find_one({"id": payload["sub"], "role": "admin"}, {"_id": 0, "password_hash": 0})
+        user = await _db.users.find_one(
+            {"id": payload["sub"], "role": "admin"},
+            {"_id": 0, "password_hash": 0}
+        )
         if not user:
             raise HTTPException(status_code=401, detail="Admin not found")
         return user
@@ -102,7 +110,7 @@ class LoginIn(BaseModel):
 
 class ReflectionSubmit(BaseModel):
     body: str = Field(min_length=4, max_length=600)
-    mode: Optional[str] = None  # optional emotional mode slug
+    mode: Optional[str] = None
 
 
 class ReflectionOut(BaseModel):
@@ -116,7 +124,7 @@ class ReflectionOut(BaseModel):
 
 class QuizAnswer(BaseModel):
     question_index: int
-    value: Optional[str] = None  # for scale: option label; for open: free text
+    value: Optional[str] = None
 
 
 class QuizSubmitIn(BaseModel):
@@ -206,7 +214,6 @@ async def submit_quiz(payload: QuizSubmitIn):
     reflection = REFLECTIONS[payload.mode]
     mode = next((m for m in MODES if m["slug"] == payload.mode), None)
 
-    # try pick anonymous related story from approved Reflection Wall first
     story = None
     pool = await _db.reflections.find(
         {"status": "approved", "mode": payload.mode},
@@ -217,13 +224,13 @@ async def submit_quiz(payload: QuizSubmitIn):
     else:
         story = CURATED_STORIES.get(payload.mode)
 
-    # Store anonymous quiz submission count for analytics (no user-identifying info)
     answer_dump = [a.model_dump() for a in payload.answers]
     submission = {
         "id": str(uuid.uuid4()),
         "mode": payload.mode,
         "answers": answer_dump,
         "open_text": (payload.open_text or "")[:1000],
+        "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await _db.quiz_submissions.insert_one(submission)
@@ -262,15 +269,14 @@ async def submit_reflection(payload: ReflectionSubmit):
         "id": str(uuid.uuid4()),
         "body": body,
         "mode": payload.mode,
-        "status": "pending",
+        "status": "approved" if not flagged else "pending",  # auto-approve unless flagged
         "flagged": flagged,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await _db.reflections.insert_one(doc)
     return reflection_doc_to_out(doc)
 
-
-# Admin moderation
+# Admin - Reflections
 @api_router.get("/admin/reflections")
 async def admin_list_reflections(
     status: Optional[str] = None,
@@ -309,20 +315,19 @@ async def admin_delete_reflection(rid: str, admin: dict = Depends(get_current_ad
         raise HTTPException(status_code=404, detail="Reflection not found.")
     return {"ok": True}
 
+
+# Admin - Quiz submissions
 @api_router.get("/admin/quiz-submissions")
 async def admin_list_quiz_submissions(
     status: Optional[str] = None,
     admin: dict = Depends(get_current_admin),
 ):
     _db = require_db()
+    query = {}
     if status == "pending":
-        # pending should include legacy docs with no status
-        query = {"$or": [{"status": "pending"}, {"status": {"$exists": False}}]}
+        query["$or"] = [{"status": "pending"}, {"status": {"$exists": False}}]
     elif status in {"approved", "rejected"}:
-        query = {"status": status}
-    else:
-        query = {}  # all
-
+        query["status"] = status
     items = await _db.quiz_submissions.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     for item in items:
         if "status" not in item:
@@ -347,34 +352,8 @@ async def admin_update_quiz_submission(
     return doc
 
 
-# @api_router.delete("/admin/quiz-submissions/{sid}")
-# async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_current_admin)):
-#     _db = require_db()
-#     res = await _db.quiz_submissions.delete_one({"id": sid})
-#     if res.deleted_count == 0:
-#         raise HTTPException(status_code=404, detail="Submission not found.")
-#     return {"ok": True}
-
-@api_router.get("/admin/stats")
-async def admin_stats(admin: dict = Depends(get_current_admin)):
-    _db = require_db()
-    pending = await _db.reflections.count_documents({"status": "pending"})
-    approved = await _db.reflections.count_documents({"status": "approved"})
-    rejected = await _db.reflections.count_documents({"status": "rejected"})
-    flagged = await _db.reflections.count_documents({"flagged": True, "status": "pending"})
-    quizzes = await _db.quiz_submissions.count_documents({})
-    return {
-        "pending": pending,
-        "approved": approved,
-        "rejected": rejected,
-        "flagged_pending": flagged,
-        "quizzes_completed": quizzes,
-    }
 @api_router.delete("/admin/quiz-submissions/{sid}")
-async def admin_delete_quiz_submission(
-    sid: str,
-    admin: dict = Depends(get_current_admin),
-):
+async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_current_admin)):
     _db = require_db()
     res = await _db.quiz_submissions.delete_one({"id": sid})
     if res.deleted_count == 0:
@@ -382,30 +361,43 @@ async def admin_delete_quiz_submission(
     return {"ok": True}
 
 
-# Include router
+# Admin - Stats
+@api_router.get("/admin/stats")
+async def admin_stats(admin: dict = Depends(get_current_admin)):
+    _db = require_db()
+    pending  = await _db.reflections.count_documents({"status": "pending"})
+    approved = await _db.reflections.count_documents({"status": "approved"})
+    rejected = await _db.reflections.count_documents({"status": "rejected"})
+    flagged  = await _db.reflections.count_documents({"flagged": True, "status": "pending"})
+    quizzes_pending = await _db.quiz_submissions.count_documents(
+        {"$or": [{"status": "pending"}, {"status": {"$exists": False}}]}
+    )
+    return {
+        "pending": pending,
+        "approved": approved,
+        "rejected": rejected,
+        "flagged_pending": flagged,
+        "quizzes_completed": quizzes_pending,
+    }
+
+
+# Include router then middleware
 app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=[
-        "https://anam-cara-voj3.vercel.app",           # your stable backend/frontend URL
-        "https://anam-cara.vercel.app",                 # if you have a custom alias
-        # allow all Vercel preview URLs for your project:
+        "https://anam-cara-voj3.vercel.app",
+        "https://anam-cara.vercel.app",
     ],
-    allow_origin_regex=r"https://anam-cara-.*\.vercel\.app",  # ✅ covers all preview deploys
+    allow_origin_regex=r"https://anam-cara-.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-
-def require_db():
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database is not configured.")
-    return db
 
 
 @app.on_event("startup")
@@ -413,15 +405,11 @@ async def startup():
     if db is None:
         logger.warning("Database is not configured. DB-dependent routes will return 503.")
         return
-
     _db = db
     try:
-        # cheap connectivity check first
         await _db.command("ping")
-
-        admin_email = os.environ.get("ADMIN_EMAIL", "admin@anamcara.app").lower()
+        admin_email    = os.environ.get("ADMIN_EMAIL", "admin@anamcara.app").lower()
         admin_password = os.environ.get("ADMIN_PASSWORD", "anamcara2026")
-
         existing = await _db.users.find_one({"email": admin_email})
         if existing is None:
             await _db.users.insert_one({
@@ -437,14 +425,13 @@ async def startup():
                 {"email": admin_email},
                 {"$set": {"password_hash": hash_password(admin_password)}},
             )
-
         await _db.users.create_index("email", unique=True)
         await _db.reflections.create_index("created_at")
         await _db.reflections.create_index("status")
-
+        await _db.quiz_submissions.create_index("created_at")
+        await _db.quiz_submissions.create_index("status")
     except Exception as e:
         logger.exception("Startup DB initialization failed: %s", e)
-
 
 
 @app.on_event("shutdown")
