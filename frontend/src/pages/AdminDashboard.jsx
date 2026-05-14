@@ -223,13 +223,13 @@ export default function AdminDashboard() {
             { k: "approved",         label: "Approved",      color: "bg-emerald-50 text-emerald-800" },
             { k: "rejected",         label: "Rejected",      color: "bg-rose-50 text-rose-800" },
             { k: "flagged_pending",  label: "Flagged",       color: "bg-orange-50 text-orange-800" },
-            { k: "quizzes_completed",label: "Quizzes Pending", color: "bg-indigo-50 text-indigo-800" },
+            { k: "quizzes_pending",  label: "Quizzes Pending", color: "bg-indigo-50 text-indigo-800" },
           ].map((s) => (
             <div
               key={s.k}
-              className={`rounded-2xl ${s.color} px-4 py-3 ${s.k === "quizzes_completed" ? "cursor-pointer" : ""}`}
+              className={`rounded-2xl ${s.color} px-4 py-3 ${s.k === "quizzes_pending" ? "cursor-pointer" : ""}`}
               data-testid={`admin-stat-${s.k}`}
-              onClick={s.k === "quizzes_completed" ? () => setTab("quizzes_pending") : undefined}
+              onClick={s.k === "quizzes_pending" ? () => setTab("quizzes_pending") : undefined}
             >
               <div className="text-2xl font-semibold">{stats[s.k] ?? 0}</div>
               <div className="text-xs uppercase tracking-[0.18em] opacity-80">{s.label}</div>
@@ -242,32 +242,37 @@ export default function AdminDashboard() {
       <div className="mt-8 flex items-center gap-2 flex-wrap">
 
         {/* Reflection tabs */}
-        {/* {[
-          { key: "pending",  label: "Pending"  },
-          { key: "approved", label: "Approved" },
-          { key: "rejected", label: "Rejected" },
+        {[
+          { key: "pending",  label: "Pending",  count: stats?.pending ?? 0 },
+          { key: "approved", label: "Approved", count: stats?.approved ?? 0 },
+          { key: "rejected", label: "Rejected", count: stats?.rejected ?? 0 },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             data-testid={`admin-tab-${t.key}`}
-            className={`rounded-full px-4 py-2 text-sm transition ${
+            className={`rounded-full px-4 py-2 text-sm transition flex items-center gap-2 ${
               tab === t.key
                 ? "bg-slate-900 text-white"
                 : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
             {t.label}
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              tab === t.key ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-700"
+            }`}>
+              {t.count}
+            </span>
           </button>
-        ))} */}
+        ))}
 
-        {/* <span className="text-slate-300 px-1 select-none">|</span> */}
+        <span className="text-slate-300 px-1 select-none">|</span>
 
         {/* Quiz tabs */}
         {[
-          { key: "quizzes_pending",  label: "Quizzes"     },
-          { key: "quizzes_approved", label: "Q·Approved"  },
-          { key: "quizzes_rejected", label: "Q·Rejected"  },
+          { key: "quizzes_pending",  label: "Q-Pending",      count: stats?.quizzes_pending ?? 0 },
+          { key: "quizzes_approved", label: "Q·Approved",  count: stats?.quizzes_approved ?? 0 },
+          { key: "quizzes_rejected", label: "Q·Rejected",  count: stats?.quizzes_rejected ?? 0 },
         ].map((t) => (
           <button
             key={t.key}
@@ -281,13 +286,11 @@ export default function AdminDashboard() {
           >
             <BookOpen className="h-3.5 w-3.5" />
             {t.label}
-            {t.key === "quizzes_pending" && (stats?.quizzes_completed ?? 0) > 0 && (
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                tab === t.key ? "bg-indigo-500 text-white" : "bg-indigo-100 text-indigo-700"
-              }`}>
-                {stats.quizzes_completed}
-              </span>
-            )}
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              tab === t.key ? "bg-indigo-500 text-white" : "bg-indigo-100 text-indigo-700"
+            }`}>
+              {t.count}
+            </span>
           </button>
         ))}
 
