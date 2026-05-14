@@ -45,7 +45,8 @@ function QuizCard({ quiz, busyId, onApprove, onReject, onDelete }) {
                 <div key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
                   <p className="text-slate-500 text-xs font-medium mb-0.5">Q{i + 1}</p>
                   <p className="text-slate-700">
-                    <span className="font-medium">Answer:</span> {a.value ?? <span className="italic text-slate-400">no answer</span>}
+                    <span className="font-medium">Answer:</span>{" "}
+                    {a.value ?? <span className="italic text-slate-400">no answer</span>}
                   </p>
                 </div>
               ))}
@@ -105,7 +106,11 @@ export default function AdminDashboard() {
     setError("");
     try {
       if (isQuizTab(which)) {
-        const statusMap = { quizzes_pending: "pending", quizzes_approved: "approved", quizzes_rejected: "rejected" };
+        const statusMap = {
+          quizzes_pending: "pending",
+          quizzes_approved: "approved",
+          quizzes_rejected: "rejected",
+        };
         const [{ data: qList }, { data: s }] = await Promise.all([
           api.get(`/admin/quiz-submissions?status=${statusMap[which]}`),
           api.get("/admin/stats"),
@@ -191,10 +196,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10">
+
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Moderation</div>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-800" data-testid="admin-heading">Reflection Wall</h1>
+          <h1 className="mt-2 text-3xl font-semibold text-slate-800" data-testid="admin-heading">
+            Reflection Wall
+          </h1>
           <p className="mt-1 text-sm text-slate-500">Signed in as {admin.email}</p>
         </div>
         <button
@@ -206,14 +215,15 @@ export default function AdminDashboard() {
         </button>
       </div>
 
+      {/* Stats */}
       {stats && (
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
-            { k: "pending", label: "Pending", color: "bg-amber-50 text-amber-800" },
-            { k: "approved", label: "Approved", color: "bg-emerald-50 text-emerald-800" },
-            { k: "rejected", label: "Rejected", color: "bg-rose-50 text-rose-800" },
-            { k: "flagged_pending", label: "Flagged", color: "bg-orange-50 text-orange-800" },
-            { k: "quizzes_completed", label: "Quizzes done", color: "bg-indigo-50 text-indigo-800" },
+            { k: "pending",          label: "Pending",       color: "bg-amber-50 text-amber-800" },
+            { k: "approved",         label: "Approved",      color: "bg-emerald-50 text-emerald-800" },
+            { k: "rejected",         label: "Rejected",      color: "bg-rose-50 text-rose-800" },
+            { k: "flagged_pending",  label: "Flagged",       color: "bg-orange-50 text-orange-800" },
+            { k: "quizzes_completed",label: "Quizzes Pending", color: "bg-indigo-50 text-indigo-800" },
           ].map((s) => (
             <div
               key={s.k}
@@ -228,23 +238,50 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="mt-8 flex items-center gap-3 flex-wrap">
+      {/* Tab bar — single, unified */}
+      <div className="mt-8 flex items-center gap-2 flex-wrap">
+
+        {/* Reflection tabs */}
+        {/* {[
+          { key: "pending",  label: "Pending"  },
+          { key: "approved", label: "Approved" },
+          { key: "rejected", label: "Rejected" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            data-testid={`admin-tab-${t.key}`}
+            className={`rounded-full px-4 py-2 text-sm transition ${
+              tab === t.key
+                ? "bg-slate-900 text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))} */}
+
+        {/* <span className="text-slate-300 px-1 select-none">|</span> */}
+
+        {/* Quiz tabs */}
         {[
-          { key: "quizzes_pending", label: "Pending" },
-          { key: "quizzes_approved", label: "Approved" },
-          { key: "quizzes_rejected", label: "Rejected" },
+          { key: "quizzes_pending",  label: "Quizzes"     },
+          { key: "quizzes_approved", label: "Q·Approved"  },
+          { key: "quizzes_rejected", label: "Q·Rejected"  },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             data-testid={`admin-tab-${t.key}`}
             className={`rounded-full px-4 py-2 text-sm transition flex items-center gap-1.5 ${
-              tab === t.key ? "bg-indigo-700 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              tab === t.key
+                ? "bg-indigo-700 text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
+            <BookOpen className="h-3.5 w-3.5" />
             {t.label}
-            {t.key === "quizzes_pending" && stats?.quizzes_completed > 0 && (
+            {t.key === "quizzes_pending" && (stats?.quizzes_completed ?? 0) > 0 && (
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                 tab === t.key ? "bg-indigo-500 text-white" : "bg-indigo-100 text-indigo-700"
               }`}>
@@ -263,12 +300,17 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {error && <div className="mt-4 text-sm text-rose-600" data-testid="admin-error">{error}</div>}
+      {error && (
+        <div className="mt-4 text-sm text-rose-600" data-testid="admin-error">{error}</div>
+      )}
 
       {/* Quiz content */}
       {isQuizTab(tab) && (
         quizzes.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-dashed border-slate-200 p-10 text-center text-slate-500" data-testid="admin-quizzes-empty">
+          <div
+            className="mt-10 rounded-3xl border border-dashed border-slate-200 p-10 text-center text-slate-500"
+            data-testid="admin-quizzes-empty"
+          >
             No quizzes here right now.
           </div>
         ) : (
@@ -290,22 +332,40 @@ export default function AdminDashboard() {
       {/* Reflection content */}
       {!isQuizTab(tab) && (
         items.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-dashed border-slate-200 p-10 text-center text-slate-500" data-testid="admin-empty">
+          <div
+            className="mt-10 rounded-3xl border border-dashed border-slate-200 p-10 text-center text-slate-500"
+            data-testid="admin-empty"
+          >
             Nothing here right now.
           </div>
         ) : (
           <div className="mt-6 grid md:grid-cols-2 gap-4">
             {items.map((r) => {
-              const p = r.mode ? (MODE_PALETTE[r.mode] || MODE_PALETTE.confusion) : MODE_PALETTE.confusion;
+              const p = r.mode
+                ? (MODE_PALETTE[r.mode] || MODE_PALETTE.confusion)
+                : MODE_PALETTE.confusion;
               return (
-                <div key={r.id} className="rounded-3xl bg-white border border-slate-100 p-5" data-testid={`admin-item-${r.id}`}>
+                <div
+                  key={r.id}
+                  className="rounded-3xl bg-white border border-slate-100 p-5"
+                  data-testid={`admin-item-${r.id}`}
+                >
                   <div className="flex items-center justify-between text-xs">
-                    <span className={`uppercase tracking-[0.22em] ${p.text} opacity-80`}>{r.mode || "Reflection"}</span>
+                    <span className={`uppercase tracking-[0.22em] ${p.text} opacity-80`}>
+                      {r.mode || "Reflection"}
+                    </span>
                     <div className="flex items-center gap-2">
                       {r.flagged && (
-                        <span className="rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-[10px]" data-testid={`admin-flag-${r.id}`}>flagged</span>
+                        <span
+                          className="rounded-full bg-orange-100 text-orange-700 px-2 py-0.5 text-[10px]"
+                          data-testid={`admin-flag-${r.id}`}
+                        >
+                          flagged
+                        </span>
                       )}
-                      <span className="text-slate-400">{new Date(r.created_at).toLocaleString()}</span>
+                      <span className="text-slate-400">
+                        {new Date(r.created_at).toLocaleString()}
+                      </span>
                     </div>
                   </div>
                   <p className="mt-3 text-slate-700 leading-relaxed">"{r.body}"</p>
