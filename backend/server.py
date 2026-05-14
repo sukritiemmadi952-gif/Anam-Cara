@@ -365,20 +365,30 @@ async def admin_delete_quiz_submission(sid: str, admin: dict = Depends(get_curre
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_current_admin)):
     _db = require_db()
-    pending  = await _db.reflections.count_documents({"status": "pending"})
+
+    # Reflection wall counts
+    pending = await _db.reflections.count_documents({"status": "pending"})
     approved = await _db.reflections.count_documents({"status": "approved"})
     rejected = await _db.reflections.count_documents({"status": "rejected"})
-    flagged  = await _db.reflections.count_documents({"flagged": True, "status": "pending"})
-    quizzes_pending = await _db.quiz_submissions.count_documents(
-        {"$or": [{"status": "pending"}, {"status": {"$exists": False}}]}
-    )
+    flagged = await _db.reflections.count_documents({"flagged": True, "status": "pending"})
+
+    # Quiz submission counts
+    quizzes_completed = await _db.quiz_submissions.count_documents({})
+    quizzes_pending = await _db.quiz_submissions.count_documents({"status": "pending"})
+    quizzes_approved = await _db.quiz_submissions.count_documents({"status": "approved"})
+    quizzes_rejected = await _db.quiz_submissions.count_documents({"status": "rejected"})
+
     return {
         "pending": pending,
         "approved": approved,
         "rejected": rejected,
         "flagged_pending": flagged,
-        "quizzes_completed": quizzes_pending,
+        "quizzes_completed": quizzes_completed,
+        "quizzes_pending": quizzes_pending,
+        "quizzes_approved": quizzes_approved,
+        "quizzes_rejected": quizzes_rejected,
     }
+
 
 
 # Include router then middleware
